@@ -1,0 +1,35 @@
+# Local/production orchestration for the backend, Redis, and frontend.
+# The database is NOT containerized here: local dev points at an existing MySQL
+# instance, and production points at Supabase Postgres — both are external to
+# this compose file, configured entirely via backend/.env (DATABASE_URL).
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  redis-data:

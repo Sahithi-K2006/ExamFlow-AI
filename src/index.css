@@ -1,0 +1,593 @@
+/* ============================================================
+   ExamFlow AI — Design System
+   Structure & density (Linear) + depth & motion (Stripe) +
+   spacing/type rhythm (Apple HIG) + restraint (Vercel).
+   ============================================================ */
+
+/* ---- Design tokens: dark (default) ---- */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --surface-0: hsl(240, 16%, 7%);
+  --surface-1: hsl(240, 14%, 10%);
+  --surface-2: hsl(240, 13%, 13%);
+  --surface-3: hsl(240, 13%, 16%);
+  --surface-overlay: hsla(240, 20%, 4%, 0.72);
+
+  /* Borders */
+  --border-subtle: hsla(0, 0%, 100%, 0.07);
+  --border-default: hsla(0, 0%, 100%, 0.11);
+  --border-strong: hsla(0, 0%, 100%, 0.18);
+
+  /* Text */
+  --text-primary: hsl(220, 25%, 97%);
+  --text-secondary: hsl(220, 12%, 70%);
+  --text-tertiary: hsl(220, 10%, 50%);
+  --text-disabled: hsl(220, 8%, 36%);
+  --text-on-accent: hsl(0, 0%, 100%);
+
+  /* Accent (single brand color doing real work) */
+  --accent-9: hsl(255, 85%, 66%);
+  --accent-10: hsl(255, 90%, 74%);
+  --accent-11: hsl(255, 70%, 58%);
+  --accent-subtle-bg: hsla(255, 85%, 66%, 0.14);
+  --accent-subtle-border: hsla(255, 85%, 66%, 0.3);
+
+  /* Status */
+  --success-9: hsl(152, 60%, 45%);
+  --success-subtle-bg: hsla(152, 60%, 45%, 0.14);
+  --success-subtle-border: hsla(152, 60%, 45%, 0.3);
+  --warning-9: hsl(38, 92%, 55%);
+  --warning-subtle-bg: hsla(38, 92%, 55%, 0.14);
+  --warning-subtle-border: hsla(38, 92%, 55%, 0.3);
+  --danger-9: hsl(354, 82%, 62%);
+  --danger-subtle-bg: hsla(354, 82%, 62%, 0.14);
+  --danger-subtle-border: hsla(354, 82%, 62%, 0.3);
+  --info-9: hsl(199, 89%, 58%);
+  --info-subtle-bg: hsla(199, 89%, 58%, 0.14);
+  --info-subtle-border: hsla(199, 89%, 58%, 0.3);
+
+  /* Shadows (layered, soft — Stripe-style depth, tuned for dark surfaces) */
+  --shadow-xs: 0 1px 2px hsla(240, 30%, 2%, 0.4);
+  --shadow-sm: 0 2px 4px -1px hsla(240, 30%, 2%, 0.45), 0 1px 2px -1px hsla(240, 30%, 2%, 0.3);
+  --shadow-md: 0 8px 16px -4px hsla(240, 30%, 2%, 0.5), 0 2px 6px -2px hsla(240, 30%, 2%, 0.35);
+  --shadow-lg: 0 20px 32px -8px hsla(240, 30%, 2%, 0.55), 0 6px 12px -4px hsla(240, 30%, 2%, 0.4);
+  --shadow-xl: 0 28px 56px -12px hsla(240, 30%, 1%, 0.65);
+  --shadow-accent: 0 8px 24px -6px hsla(255, 85%, 66%, 0.45);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent-9);
+
+  color: var(--text-primary);
+  background-color: var(--surface-0);
+}
+
+/* ---- Design tokens: light ---- */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --surface-0: hsl(240, 25%, 98%);
+  --surface-1: hsl(0, 0%, 100%);
+  --surface-2: hsl(240, 20%, 96%);
+  --surface-3: hsl(240, 18%, 93%);
+  --surface-overlay: hsla(240, 25%, 15%, 0.4);
+
+  --border-subtle: hsl(240, 16%, 91%);
+  --border-default: hsl(240, 13%, 86%);
+  --border-strong: hsl(240, 10%, 76%);
+
+  --text-primary: hsl(240, 22%, 12%);
+  --text-secondary: hsl(240, 10%, 38%);
+  --text-tertiary: hsl(240, 8%, 54%);
+  --text-disabled: hsl(240, 6%, 72%);
+  --text-on-accent: hsl(0, 0%, 100%);
+
+  --accent-9: hsl(255, 75%, 55%);
+  --accent-10: hsl(255, 78%, 48%);
+  --accent-11: hsl(255, 70%, 45%);
+  --accent-subtle-bg: hsla(255, 75%, 55%, 0.08);
+  --accent-subtle-border: hsla(255, 75%, 55%, 0.22);
+
+  --success-9: hsl(152, 65%, 34%);
+  --success-subtle-bg: hsla(152, 65%, 34%, 0.09);
+  --success-subtle-border: hsla(152, 65%, 34%, 0.22);
+  --warning-9: hsl(32, 90%, 42%);
+  --warning-subtle-bg: hsla(32, 90%, 42%, 0.1);
+  --warning-subtle-border: hsla(32, 90%, 42%, 0.24);
+  --danger-9: hsl(354, 75%, 48%);
+  --danger-subtle-bg: hsla(354, 75%, 48%, 0.08);
+  --danger-subtle-border: hsla(354, 75%, 48%, 0.22);
+  --info-9: hsl(199, 85%, 42%);
+  --info-subtle-bg: hsla(199, 85%, 42%, 0.08);
+  --info-subtle-border: hsla(199, 85%, 42%, 0.22);
+
+  --shadow-xs: 0 1px 2px hsla(240, 20%, 40%, 0.06);
+  --shadow-sm: 0 2px 4px -1px hsla(240, 20%, 40%, 0.08), 0 1px 2px -1px hsla(240, 20%, 40%, 0.06);
+  --shadow-md: 0 8px 16px -4px hsla(240, 20%, 40%, 0.1), 0 2px 6px -2px hsla(240, 20%, 40%, 0.06);
+  --shadow-lg: 0 20px 32px -8px hsla(240, 20%, 40%, 0.14), 0 6px 12px -4px hsla(240, 20%, 40%, 0.08);
+  --shadow-xl: 0 28px 56px -12px hsla(240, 20%, 30%, 0.18);
+  --shadow-accent: 0 8px 24px -6px hsla(255, 75%, 55%, 0.28);
+
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent-9);
+
+  color: var(--text-primary);
+  background-color: var(--surface-0);
+}
+
+/* ---- Static tokens (identical across themes) ---- */
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Outfit', 'Inter', -apple-system, sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, Consolas, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem);
+  --text-4xl: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
+  --text-5xl: clamp(2.1rem, 1.4rem + 3vw, 3.25rem);
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 72px;
+  --topbar-height: 64px;
+}
+
+/* ============================================================
+   TEMPORARY back-compat aliases for the pre-redesign token names.
+   Every page still using these gets a correctly-themed (if not yet
+   fully redesigned) look during the phased migration. Remove once
+   every page listed in the redesign plan has been migrated to the
+   new token names directly.
+   ============================================================ */
+:root {
+  --bg-primary: var(--surface-0);
+  --bg-secondary: var(--surface-1);
+  --bg-tertiary: var(--surface-2);
+  --glass-bg: var(--surface-1);
+  --glass-bg-hover: var(--surface-2);
+  --glass-border: var(--border-subtle);
+  --glass-border-glow: var(--accent-subtle-border);
+  --text-muted: var(--text-tertiary);
+  --accent-purple: var(--accent-9);
+  --accent-cyan: var(--info-9);
+  --accent-pink: var(--accent-9);
+  --color-success: var(--success-9);
+  --color-warning: var(--warning-9);
+  --color-danger: var(--danger-9);
+  --font-heading: var(--font-display);
+  --font-body: var(--font-sans);
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-normal: var(--duration-base) var(--ease-in-out);
+  --transition-slow: var(--duration-slow) var(--ease-in-out);
+  --glow-purple: var(--shadow-accent);
+  --glow-cyan: 0 8px 24px -6px hsla(199, 89%, 58%, 0.4);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: var(--leading-normal);
+  font-size: var(--text-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--duration-base) var(--ease-in-out), color var(--duration-base) var(--ease-in-out);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+  margin: 0;
+  color: var(--text-primary);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Visible, consistent focus state everywhere (accessibility) */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--surface-0);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: padding-box;
+}
+
+/* ============================================================
+   Legacy classes kept for pages not yet migrated to src/components/ui
+   (restyled to the new token system; safe to keep using during
+   the phased redesign, will be removed once every page is migrated)
+   ============================================================ */
+.glass-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration-base) var(--ease-in-out), box-shadow var(--duration-base) var(--ease-in-out), transform var(--duration-base) var(--ease-in-out);
+}
+
+.glass-panel:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-panel-glow {
+  background: var(--surface-1);
+  border: 1px solid var(--accent-subtle-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md), var(--shadow-accent);
+  transition: all var(--duration-base) var(--ease-in-out);
+}
+
+.glass-panel-glow:hover {
+  border-color: var(--accent-9);
+  box-shadow: var(--shadow-lg), var(--shadow-accent);
+}
+
+.text-glow-purple,
+.text-glow-cyan {
+  /* glow text effects retired in the new design language — kept as no-ops for compatibility */
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent-9);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-10);
+  box-shadow: var(--shadow-sm), var(--shadow-accent);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-11);
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+.btn-cyan {
+  background: var(--info-9);
+  color: var(--text-on-accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-cyan:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-lg {
+  padding: 13px 24px;
+  font-size: var(--text-base);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+}
+
+/* Form fields */
+.form-group {
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.form-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.form-input::placeholder {
+  color: var(--text-disabled);
+}
+
+.form-input:hover {
+  border-color: var(--border-strong);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-9);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 3px var(--accent-subtle-bg);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.badge-purple {
+  background: var(--accent-subtle-bg);
+  color: var(--accent-9);
+  border-color: var(--accent-subtle-border);
+}
+
+.badge-cyan {
+  background: var(--info-subtle-bg);
+  color: var(--info-9);
+  border-color: var(--info-subtle-border);
+}
+
+.badge-success {
+  background: var(--success-subtle-bg);
+  color: var(--success-9);
+  border-color: var(--success-subtle-border);
+}
+
+.badge-danger {
+  background: var(--danger-subtle-bg);
+  color: var(--danger-9);
+  border-color: var(--danger-subtle-border);
+}
+
+.badge-warning {
+  background: var(--warning-subtle-bg);
+  color: var(--warning-9);
+  border-color: var(--warning-subtle-border);
+}
+
+/* Styled native dialog backdrop, kept for any remaining <dialog> usage */
+dialog {
+  border: none;
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xl);
+  padding: 0;
+  max-width: 90vw;
+  width: 480px;
+}
+
+dialog::backdrop {
+  background-color: var(--surface-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   Motion
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gridFlow {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-base) var(--ease-out);
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-slow) var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-slow) var(--ease-out);
+}
+
+.grid-background {
+  background-image: linear-gradient(var(--border-subtle) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+}
+
+/* Collapse nav button text to icon-only below ~480px so the public header never overflows */
+@media (max-width: 480px) {
+  .nav-label {
+    display: none;
+  }
+}
+
+/* Admin shell: below ~900px the sidebar becomes an off-canvas drawer instead of pushing content */
+@media (max-width: 900px) {
+  .admin-sidebar {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--ease-in-out) !important;
+    width: var(--sidebar-width) !important;
+  }
+  .admin-sidebar-open {
+    transform: translateX(0);
+  }
+  .admin-hamburger {
+    display: inline-flex !important;
+  }
+  .admin-search {
+    display: none !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .admin-sidebar-backdrop {
+    display: none;
+  }
+}
+
+/* Respect users who've asked for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
