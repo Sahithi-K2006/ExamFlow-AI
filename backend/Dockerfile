@@ -12,9 +12,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-# Shell form so $PORT (injected by the host platform, e.g. Railway) is expanded;
-# falls back to 8000 for local `docker run` without that var set.
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Runs pending Alembic migrations and syncs the admin account from env vars
+# before starting the server, so a deploy is self-contained — see entrypoint.sh.
+CMD ["./entrypoint.sh"]
