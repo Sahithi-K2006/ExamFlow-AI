@@ -42,7 +42,7 @@ def get_student_activity(student_id: str, db: Session = Depends(get_db), _: User
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
     rows = (
-        db.query(ActivityLog, User.name, Exam.title)
+        db.query(ActivityLog, User.name, User.role, Exam.title)
         .outerjoin(User, ActivityLog.student_id == User.id)
         .outerjoin(Exam, ActivityLog.exam_id == Exam.id)
         .filter(ActivityLog.student_id == student_id)
@@ -50,25 +50,33 @@ def get_student_activity(student_id: str, db: Session = Depends(get_db), _: User
         .limit(500)
         .all()
     )
-    return [_activity_out(log, student_name, exam_title) for log, student_name, exam_title in rows]
+    return [_activity_out(log, name, role, exam_title) for log, name, role, exam_title in rows]
 
 
 @router.get("/activity-log", response_model=list[ActivityLogOut])
-def list_activity_log(limit: int = 200, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+def list_activity_log(
+    limit: int = 200,
+    event_type: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """Persisted, DB-backed activity feed (login/logout, queue, exam events, ...) — pass
+    event_type=login to power a login-history view."""
     limit = min(max(limit, 1), 1000)
-    rows = (
-        db.query(ActivityLog, User.name, Exam.title)
+    query = (
+        db.query(ActivityLog, User.name, User.role, Exam.title)
         .outerjoin(User, ActivityLog.student_id == User.id)
         .outerjoin(Exam, ActivityLog.exam_id == Exam.id)
-        .order_by(ActivityLog.created_at.desc())
-        .limit(limit)
-        .all()
     )
-    return [_activity_out(log, student_name, exam_title) for log, student_name, exam_title in rows]
+    if event_type:
+        query = query.filter(ActivityLog.event_type == event_type)
+    rows = query.order_by(ActivityLog.created_at.desc()).limit(limit).all()
+    return [_activity_out(log, name, role, exam_title) for log, name, role, exam_title in rows]
 
 
-def _activity_out(log: ActivityLog, student_name: str | None, exam_title: str | None) -> ActivityLogOut:
+def _activity_out(log: ActivityLog, user_name: str | None, user_role: UserRole | None, exam_title: str | None) -> ActivityLogOut:
     out = ActivityLogOut.model_validate(log)
-    out.student_name = student_name
+    out.student_name = user_name
+    out.user_role = user_role.value if user_role else None
     out.exam_title = exam_title
     return out

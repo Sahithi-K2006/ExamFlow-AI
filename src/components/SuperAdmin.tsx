@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../state';
-import { 
-  Cpu, HardDrive, Network, Terminal, Trash2
+import {
+  Cpu, HardDrive, Network, Terminal, Trash2, LogIn, RefreshCw
 } from 'lucide-react';
+import { listActivityLog, type ApiActivityLog } from '../api/students';
+import { ApiError } from '../api/client';
 
 export const SuperAdmin: React.FC = () => {
   const {
@@ -10,10 +12,29 @@ export const SuperAdmin: React.FC = () => {
     serverHealth,
     auditLogs, clearLogs, addLog
   } = useApp();
-  
+
   // Settings configs
   const [sessionTimeout, setSessionTimeout] = useState(30);
   const [dbBackupState, setDbBackupState] = useState<'idle' | 'running' | 'success'>('idle');
+
+  // Login History — real, database-backed (persists across refresh/sessions), unlike the
+  // "Live Auditing Console" below which is just this browser tab's in-memory event feed.
+  const [loginHistory, setLoginHistory] = useState<ApiActivityLog[]>([]);
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
+  const [loginHistoryError, setLoginHistoryError] = useState<string | null>(null);
+
+  const loadLoginHistory = useCallback(() => {
+    setLoginHistoryLoading(true);
+    setLoginHistoryError(null);
+    listActivityLog(100, 'login')
+      .then(setLoginHistory)
+      .catch(err => setLoginHistoryError(err instanceof ApiError ? err.message : 'Could not load login history.'))
+      .finally(() => setLoginHistoryLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadLoginHistory();
+  }, [loadLoginHistory]);
 
   const toggleMaintenance = () => {
     const nextState = !maintenanceMode;
@@ -186,6 +207,68 @@ export const SuperAdmin: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* Persisted Login History — real database rows via GET /api/admin/activity-log?event_type=login,
+          unlike the Live Auditing Console above (that's just this browser tab's in-memory event feed). */}
+      <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px' }}>
+          <h3 style={{ color: '#fff', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LogIn size={18} color="var(--accent-cyan)" /> Login History
+          </h3>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={loadLoginHistory}
+            disabled={loginHistoryLoading}
+            style={{ padding: '4px 10px', fontSize: '0.75rem', borderColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <RefreshCw size={12} style={loginHistoryLoading ? { animation: 'spin 0.8s linear infinite' } : undefined} /> Refresh
+          </button>
+        </div>
+
+        {loginHistoryError && (
+          <div style={{ color: 'var(--color-danger)', fontSize: '0.85rem', padding: '12px 0' }}>{loginHistoryError}</div>
+        )}
+
+        {!loginHistoryError && !loginHistoryLoading && loginHistory.length === 0 && (
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 0', fontSize: '0.85rem' }}>
+            No logins recorded yet.
+          </div>
+        )}
+
+        {loginHistory.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 500 }}>User</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 500 }}>Role</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 500 }}>Time</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 500 }}>IP Address</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 500 }}>Device / Browser</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loginHistory.map(log => (
+                  <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                    <td style={{ padding: '8px 10px', color: '#fff' }}>{log.student_name ?? 'Unknown'}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>
+                      {log.user_role === 'admin' ? 'Admin' : log.user_role === 'student' ? 'Student' : '—'}
+                    </td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>{new Date(log.created_at).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{log.ip_address ?? '—'}</td>
+                    <td
+                      style={{ padding: '8px 10px', color: 'var(--text-secondary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      title={log.browser ?? undefined}
+                    >
+                      {log.device ?? '—'}{log.browser ? ` · ${log.browser}` : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

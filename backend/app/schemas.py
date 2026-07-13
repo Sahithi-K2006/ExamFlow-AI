@@ -212,6 +212,7 @@ class ActivityLogOut(BaseModel):
     id: str
     student_id: str | None = None
     student_name: str | None = None
+    user_role: str | None = None
     exam_id: str | None = None
     exam_title: str | None = None
     session_id: str | None = None
