@@ -591,3 +591,67 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   AI Assistant chat markdown + typing indicator
+   ============================================================ */
+.ai-markdown {
+  word-break: break-word;
+}
+.ai-markdown > *:first-child { margin-top: 0; }
+.ai-markdown > *:last-child { margin-bottom: 0; }
+.ai-markdown p { margin: 0 0 8px; }
+.ai-markdown ul, .ai-markdown ol { margin: 0 0 8px; padding-left: 18px; }
+.ai-markdown li { margin-bottom: 2px; }
+.ai-markdown a { color: var(--accent-9); text-decoration: underline; }
+.ai-markdown strong { font-weight: 700; }
+.ai-markdown code {
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.ai-markdown pre {
+  background: var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0 0 8px;
+}
+.ai-markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.ai-typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ai-typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: aiTypingBounce 1.2s infinite ease-in-out;
+}
+.ai-typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.ai-typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes aiTypingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Below ~640px, collapse the quick-action chip row to horizontal scroll instead of wrapping
+   into many rows, so the AI Assistant card doesn't grow taller than the viewport. */
+@media (max-width: 640px) {
+  .ai-quick-actions {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .ai-quick-actions::-webkit-scrollbar { display: none; }
+}

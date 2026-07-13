@@ -273,3 +273,11 @@ class AdminQueueStudent(BaseModel):
     queue_position: int
     joined_queue_at: datetime | None = None
     entered_exam_at: datetime | None = None
+
+
+class AIChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class AIChatResponse(BaseModel):
+    reply: str

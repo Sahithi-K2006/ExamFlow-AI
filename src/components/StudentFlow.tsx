@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useApp } from '../state';
 import {
   AlertTriangle, Play, HelpCircle, Terminal, Send, Clock,
-  ChevronLeft, ChevronRight, Award, Wifi, Camera, Monitor, LogOut,
+  ChevronLeft, ChevronRight, Award, Wifi, Camera, Monitor, LogOut, Copy, Check,
 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -13,6 +15,25 @@ import { Modal } from './ui/Modal';
 import { Checkbox } from './ui/Checkbox';
 import { useToast } from './ui/Toast';
 import { getPracticeQuestions, logPracticeQuestionClick, type PracticeQuestion } from '../api/exams';
+import { sendChatMessage } from '../api/ai';
+import { ApiError } from '../api/client';
+
+interface ChatMessage {
+  sender: 'student' | 'ai';
+  text: string;
+  isError?: boolean;
+}
+
+const QUICK_ACTIONS: { label: string; prompt: string }[] = [
+  { label: 'Exam Rules', prompt: 'What are the exam rules I should know before starting?' },
+  { label: 'Technical Help', prompt: "I'm having a technical issue — can you help me troubleshoot?" },
+  { label: 'Queue Status', prompt: 'Can you explain how the waiting queue and my position work?' },
+  { label: 'Browser Issues', prompt: 'Which browsers are supported and how do I fix browser compatibility issues?' },
+  { label: 'Webcam Help', prompt: "My webcam isn't working — how do I fix webcam permissions?" },
+  { label: 'Network Problems', prompt: "I'm having network or internet connection problems. What should I do?" },
+  { label: 'Practice Questions', prompt: 'Tell me about the practice questions available while I wait.' },
+  { label: 'FAQ', prompt: 'What are some frequently asked questions about ExamFlow?' },
+];
 
 export const StudentFlow: React.FC = () => {
   const {
@@ -53,10 +74,13 @@ export const StudentFlow: React.FC = () => {
   // Prep lounge states
   const [practiceInput, setPracticeInput] = useState(`// Practice Sandbox\nfunction doubleNumber(n) {\n  return n * 2;\n}`);
   const [practiceOutput, setPracticeOutput] = useState('Output console idle...');
-  const [chatMessages, setChatMessages] = useState<{ sender: 'student' | 'ai'; text: string }[]>([
-    { sender: 'ai', text: 'Hello! I am your AI Preparation Assistant. Ask me anything about Data Structures, Algorithms, or exam tips while you wait.' }
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { sender: 'ai', text: "Hello! I'm ExamFlow AI, your examination support assistant. Ask me about exam rules, the waiting queue, technical issues, or anything else ExamFlow-related." }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [aiTyping, setAiTyping] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [clickedPracticeIds, setClickedPracticeIds] = useState<Set<string>>(new Set());
 
@@ -203,31 +227,52 @@ export const StudentFlow: React.FC = () => {
     }, 600);
   };
 
-  // AI Chat interaction
-  const handleSendChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  // AI Chat interaction — POST /api/ai/chat (FastAPI backend, which talks to OpenAI; the
+  // frontend never calls OpenAI directly).
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, aiTyping]);
 
-    const userMsg = chatInput.trim();
+  const sendMessage = async (raw: string) => {
+    const userMsg = raw.trim();
+    if (!userMsg || aiTyping) return;
+
     setChatMessages(prev => [...prev, { sender: 'student', text: userMsg }]);
     setChatInput('');
+    setAiTyping(true);
 
-    setTimeout(() => {
-      let aiText = "That's an interesting question! For the exam, remember that time complexities like O(log n) represent logarithmic scaling, commonly found in trees and binary search algorithms.";
+    try {
+      const { reply } = await sendChatMessage(userMsg);
+      setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
+    } catch (err) {
+      const text = err instanceof ApiError
+        ? err.message
+        : 'Could not reach the AI assistant. Please check your connection and try again.';
+      setChatMessages(prev => [...prev, { sender: 'ai', text, isError: true }]);
+    } finally {
+      setAiTyping(false);
+    }
+  };
 
-      const lower = userMsg.toLowerCase();
-      if (lower.includes('palindrome')) {
-        aiText = "To check if a string is a palindrome: clean the string by removing non-alphanumeric characters (regex: `/[^a-zA-Z0-9]/g`), lowercase it, then compare it to its reverse (e.g. `str.split('').reverse().join('')`).";
-      } else if (lower.includes('binary search') || lower.includes('search')) {
-        aiText = "Binary Search halves the search space each step, giving O(log n) complexity. However, the input array MUST be sorted beforehand, which takes O(n log n).";
-      } else if (lower.includes('sql') || lower.includes('database')) {
-        aiText = "Make sure your SQL syntax matches standard filters: `SELECT columns FROM table WHERE condition ORDER BY column DESC`. The conditions are case-sensitive in databases.";
-      } else if (lower.includes('syllabus') || lower.includes('rules')) {
-        aiText = "The exam duration is 15 minutes. It contains 1 MCQ (Algorithms), 1 Coding Challenge (JavaScript), and 1 SQL Query filtering. Proctoring is active—do not leave the tab!";
-      }
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage(chatInput);
+  };
 
-      setChatMessages(prev => [...prev, { sender: 'ai', text: aiText }]);
-    }, 800);
+  const handleChatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(chatInput);
+    }
+  };
+
+  const handleCopyMessage = (index: number, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(prev => (prev === index ? null : prev)), 1500);
+    }).catch(() => {
+      show({ tone: 'danger', title: 'Could not copy to clipboard' });
+    });
   };
 
   // Format countdown time
@@ -499,37 +544,83 @@ export const StudentFlow: React.FC = () => {
 
             <Card padding="lg" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', height: 340 }}>
               <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)' }}>
-                <HelpCircle size={16} color="var(--accent-9)" /> AI Prep Assistant
+                <HelpCircle size={16} color="var(--accent-9)" /> ExamFlow AI Assistant
               </h4>
 
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 10, background: 'var(--surface-0)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 10, background: 'var(--surface-0)', borderRadius: 'var(--radius-md)', marginBottom: 10 }}>
                 {chatMessages.map((m, i) => (
                   <div key={i} style={{
                     alignSelf: m.sender === 'student' ? 'flex-end' : 'flex-start',
-                    background: m.sender === 'student' ? 'var(--accent-9)' : 'var(--surface-2)',
-                    color: m.sender === 'student' ? 'var(--text-on-accent)' : 'var(--text-primary)',
-                    padding: '8px 12px',
+                    background: m.sender === 'student' ? 'var(--accent-9)' : (m.isError ? 'var(--danger-subtle-bg)' : 'var(--surface-2)'),
+                    color: m.sender === 'student' ? 'var(--text-on-accent)' : (m.isError ? 'var(--danger-9)' : 'var(--text-primary)'),
+                    padding: '8px 26px 8px 12px',
                     borderRadius: 'var(--radius-lg)',
                     maxWidth: '85%',
                     fontSize: 'var(--text-xs)',
                     lineHeight: 1.4,
-                    border: m.sender === 'ai' ? '1px solid var(--border-subtle)' : 'none'
+                    border: m.sender === 'ai' ? `1px solid ${m.isError ? 'var(--danger-subtle-border)' : 'var(--border-subtle)'}` : 'none',
+                    position: 'relative',
                   }}>
-                    {m.text}
+                    {m.sender === 'ai' ? (
+                      <div className="ai-markdown">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{ a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}
+                        >
+                          {m.text}
+                        </ReactMarkdown>
+                      </div>
+                    ) : m.text}
+                    {m.sender === 'ai' && !m.isError && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyMessage(i, m.text)}
+                        aria-label="Copy response"
+                        title="Copy response"
+                        style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2, display: 'flex' }}
+                      >
+                        {copiedIndex === i ? <Check size={11} color="var(--success-9)" /> : <Copy size={11} />}
+                      </button>
+                    )}
                   </div>
+                ))}
+                {aiTyping && (
+                  <div style={{ alignSelf: 'flex-start', background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', padding: '9px 14px', borderRadius: 'var(--radius-lg)' }}>
+                    <span className="ai-typing-dots" aria-label="Assistant is typing"><span /><span /><span /></span>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="ai-quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {QUICK_ACTIONS.map(qa => (
+                  <button
+                    key={qa.label}
+                    type="button"
+                    onClick={() => sendMessage(qa.prompt)}
+                    disabled={aiTyping}
+                    style={{
+                      fontSize: 'var(--text-xs)', padding: '4px 10px', borderRadius: 'var(--radius-full)',
+                      border: '1px solid var(--border-default)', background: 'var(--surface-2)', color: 'var(--text-secondary)',
+                      cursor: aiTyping ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+                    }}
+                  >
+                    {qa.label}
+                  </button>
                 ))}
               </div>
 
               <form onSubmit={handleSendChat} style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="text"
+                <textarea
                   className="form-input"
-                  placeholder="Ask a question (e.g. 'Explain Palindrome')…"
-                  style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm)' }}
+                  placeholder="Ask a question… (Enter to send, Shift+Enter for a new line)"
+                  rows={1}
+                  style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm)', resize: 'none', fontFamily: 'inherit', maxHeight: 72 }}
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={handleChatKeyDown}
                 />
-                <Button type="submit" icon={<Send size={14} />} aria-label="Send message" />
+                <Button type="submit" icon={<Send size={14} />} aria-label="Send message" loading={aiTyping} disabled={!chatInput.trim() && !aiTyping} />
               </form>
             </Card>
 
