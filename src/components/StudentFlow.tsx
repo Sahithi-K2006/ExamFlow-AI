@@ -35,6 +35,14 @@ const QUICK_ACTIONS: { label: string; prompt: string }[] = [
   { label: 'FAQ', prompt: 'What are some frequently asked questions about ExamFlow?' },
 ];
 
+const CODING_LANGUAGE_LABELS: Record<string, string> = {
+  javascript: 'JavaScript', python: 'Python', java: 'Java', cpp: 'C++', c: 'C',
+  typescript: 'TypeScript', go: 'Go',
+};
+
+const codingLanguageLabel = (lang: string | null | undefined): string =>
+  lang ? (CODING_LANGUAGE_LABELS[lang.toLowerCase()] ?? lang) : 'Code';
+
 export const StudentFlow: React.FC = () => {
   const {
     studentUser,
@@ -903,7 +911,9 @@ export const StudentFlow: React.FC = () => {
                 {questions[currentQuestionIndex].type === 'coding' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>JavaScript Editor</span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+                        {codingLanguageLabel(questions[currentQuestionIndex].programmingLanguage)} Editor
+                      </span>
                       <Button size="sm" variant="secondary" icon={<Play size={11} />} onClick={() => runActiveExamCode(studentAnswers[questions[currentQuestionIndex].id] || questions[currentQuestionIndex].initialCode || '')}>Test Code Execution</Button>
                     </div>
                     <textarea

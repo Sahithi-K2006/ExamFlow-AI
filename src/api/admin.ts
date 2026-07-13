@@ -14,6 +14,25 @@ export interface AdminQueueStudent {
   entered_exam_at: string | null;
 }
 
+export interface AdminSession {
+  session_id: string;
+  student_name: string;
+  student_email: string;
+  student_code: string | null;
+  status: 'waiting' | 'in_progress' | 'submitted' | 'exited';
+  joined_queue_at: string | null;
+  entered_exam_at: string | null;
+  submitted_at: string | null;
+  score: number | null;
+  total_marks: number | null;
+  passed: boolean | null;
+  needs_review: boolean;
+  proctoring_violations: number;
+  ip_address: string | null;
+  device: string | null;
+  browser: string | null;
+}
+
 export interface ExamPayload {
   title?: string;
   slug?: string;
@@ -64,6 +83,8 @@ export const assignExamQuestions = (examId: string, questionIds: string[]) =>
   });
 
 export const getAdminQueue = (examId: string) => apiFetch<AdminQueueStudent[]>(`/api/admin/exams/${examId}/queue`);
+
+export const getExamSessions = (examId: string) => apiFetch<AdminSession[]>(`/api/admin/exams/${examId}/sessions`);
 
 export const updateCapacity = (examId: string, maxActiveStudents: number) =>
   apiFetch<ApiExam>(`/api/admin/exams/${examId}/capacity`, {

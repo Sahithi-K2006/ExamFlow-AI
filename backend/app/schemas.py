@@ -276,6 +276,25 @@ class AdminQueueStudent(BaseModel):
     entered_exam_at: datetime | None = None
 
 
+class AdminSessionOut(BaseModel):
+    session_id: str
+    student_name: str
+    student_email: str
+    student_code: str | None
+    status: str
+    joined_queue_at: datetime | None = None
+    entered_exam_at: datetime | None = None
+    submitted_at: datetime | None = None
+    score: int | None = None
+    total_marks: int | None = None
+    passed: bool | None = None
+    needs_review: bool = False
+    proctoring_violations: int = 0
+    ip_address: str | None = None
+    device: str | None = None
+    browser: str | None = None
+
+
 class AIChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1000)
 

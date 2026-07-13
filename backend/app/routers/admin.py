@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.schemas import (
     AdminQueueStudent,
+    AdminSessionOut,
     AssignQuestionsRequest,
     CapacityUpdateRequest,
     ExamCreate,
@@ -191,6 +192,43 @@ def assign_questions(exam_id: str, payload: AssignQuestionsRequest, db: Session 
 async def get_queue(exam_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
     _get_exam_or_404(db, exam_id)
     return await build_admin_queue(db, exam_id)
+
+
+@router.get("/exams/{exam_id}/sessions", response_model=list[AdminSessionOut])
+def list_exam_sessions(exam_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
+    """Full history of every student who ever entered this exam's queue or room — every
+    status (waiting/in_progress/submitted/exited), not just the currently-active ones the
+    live queue endpoint above returns. Answers "which students entered the exam room"."""
+    _get_exam_or_404(db, exam_id)
+    rows = (
+        db.query(ExamSession, User)
+        .join(User, User.id == ExamSession.student_id)
+        .filter(ExamSession.exam_id == exam_id)
+        .order_by(ExamSession.created_at.desc())
+        .limit(1000)
+        .all()
+    )
+    return [
+        AdminSessionOut(
+            session_id=session.id,
+            student_name=student.name,
+            student_email=student.email,
+            student_code=student.student_id,
+            status=session.status.value,
+            joined_queue_at=session.joined_queue_at,
+            entered_exam_at=session.entered_exam_at,
+            submitted_at=session.submitted_at,
+            score=session.score,
+            total_marks=session.total_marks,
+            passed=session.passed,
+            needs_review=session.needs_review,
+            proctoring_violations=session.proctoring_violations,
+            ip_address=session.ip_address,
+            device=session.device,
+            browser=session.browser,
+        )
+        for session, student in rows
+    ]
 
 
 @router.patch("/exams/{exam_id}/capacity", response_model=ExamOut)

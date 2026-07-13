@@ -80,6 +80,12 @@ interface AppContextType {
   forceAdmit: (sessionId: string) => void;
   forceExit: (sessionId: string) => void;
 
+  // Which exam the admin queue/session views are currently scoped to — the admin picks from
+  // adminExams (every exam, any status) rather than the dashboard silently defaulting to one.
+  adminExams: ApiExam[];
+  adminExamId: string | null;
+  selectAdminExam: (examId: string) => void;
+
   // Exam Engine State (student-facing)
   examMeta: ApiExam | null;
   startExamSession: () => Promise<void>;
@@ -140,6 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Admin-facing queue state (real backend)
   const [capacity, setCapacityState] = useState<number>(2);
   const [queue, setQueue] = useState<Student[]>([]);
+  const [adminExams, setAdminExams] = useState<ApiExam[]>([]);
   const [adminExamId, setAdminExamId] = useState<string | null>(null);
   const adminWsRef = useRef<WebSocket | null>(null);
 
@@ -430,7 +437,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let examId = adminExamId;
       if (!examId) {
         const exams = await listExams();
-        const target = exams.find(e => e.slug === DEFAULT_EXAM_SLUG) || exams[0];
+        setAdminExams(exams);
+        // Previously always defaulted to whichever exam had the slug 'dsa-101' (or just
+        // exams[0]) — so the queue monitor silently kept watching the wrong exam once an
+        // admin published a different one, always showing "No students active". Default to
+        // the most recently published exam instead (falling back to most recently created),
+        // and let selectAdminExam() below switch to any other exam explicitly.
+        const published = exams.filter(e => e.status === 'published');
+        const pool = published.length > 0 ? published : exams;
+        const target = [...pool].sort((a, b) => {
+          const aTime = new Date(a.published_at ?? a.created_at ?? 0).getTime();
+          const bTime = new Date(b.published_at ?? b.created_at ?? 0).getTime();
+          return bTime - aTime;
+        })[0];
         if (!target) return;
         examId = target.id;
         setAdminExamId(examId);
@@ -441,6 +460,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore transient failures; the next WS snapshot or manual refresh will retry
     }
+  };
+
+  // Lets the admin explicitly switch which exam's live queue/session history they're viewing
+  // (e.g. from a <select> on the Queue Monitoring page), instead of being stuck on whatever
+  // refreshAdminQueue defaulted to.
+  const selectAdminExam = (examId: string) => {
+    const target = adminExams.find(e => e.id === examId);
+    setAdminExamId(examId);
+    setQueue([]);
+    if (target) setCapacityState(target.max_active_students);
+    getAdminQueue(examId).then(list => setQueue(list.map(mapAdminQueueStudent))).catch(() => {});
   };
 
   const setCapacity = async (cap: number) => {
@@ -583,6 +613,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leaveQueue,
         forceAdmit,
         forceExit,
+        adminExams,
+        adminExamId,
+        selectAdminExam,
         examMeta,
         startExamSession,
         queuePosition,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Pencil, Copy, Trash2, ListChecks, Code2, Database, Type, MessageSquare, AlignLeft, CheckSquare } from 'lucide-react';
+import { Plus, Search, Pencil, Copy, Trash2, ListChecks, Code2, Database, Type, MessageSquare, AlignLeft, CheckSquare, X } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -26,6 +26,8 @@ const typeConfig: Record<QuestionType, { label: string; icon: React.ElementType 
 
 const difficultyTone = { easy: 'success', medium: 'warning', hard: 'danger' } as const;
 
+const CODING_LANGUAGES = ['javascript', 'python', 'java', 'cpp', 'c', 'typescript', 'go'];
+
 const emptyForm: QuestionPayload = {
   type: 'mcq',
   question_text: '',
@@ -36,6 +38,8 @@ const emptyForm: QuestionPayload = {
   negative_marks: 0,
   tags: [],
   explanation: '',
+  options: ['', ''],
+  correct_answer: {},
 };
 
 export const QuestionBank: React.FC = () => {
@@ -94,19 +98,83 @@ export const QuestionBank: React.FC = () => {
       tags: q.tags,
       explanation: q.explanation ?? '',
       programming_language: q.programming_language ?? undefined,
+      options: q.options.length > 0 ? q.options : ['', ''],
+      correct_answer: q.correct_answer,
+      initial_code: q.initial_code ?? undefined,
     });
     setTagsInput(q.tags.join(', '));
     setImageFile(null);
     setModalOpen(true);
   };
 
+  // MCQ / Multiple Correct option-list editing
+  const updateOption = (index: number, value: string) => {
+    setForm(f => {
+      const options = [...(f.options ?? [])];
+      const oldValue = options[index];
+      options[index] = value;
+      // Keep correct_answer in sync so renaming a selected option doesn't silently
+      // orphan the stored answer (grading matches on exact option text).
+      let correct_answer = f.correct_answer;
+      if (f.type === 'mcq' && correct_answer?.value === oldValue) {
+        correct_answer = { value };
+      } else if (f.type === 'multiple_correct' && Array.isArray(correct_answer?.values)) {
+        correct_answer = { values: (correct_answer.values as string[]).map(v => (v === oldValue ? value : v)) };
+      }
+      return { ...f, options, correct_answer };
+    });
+  };
+
+  const addOption = () => setForm(f => ({ ...f, options: [...(f.options ?? []), ''] }));
+
+  const removeOption = (index: number) => {
+    setForm(f => {
+      const removed = f.options?.[index];
+      const options = (f.options ?? []).filter((_, i) => i !== index);
+      let correct_answer = f.correct_answer;
+      if (f.type === 'mcq' && correct_answer?.value === removed) {
+        correct_answer = {};
+      } else if (f.type === 'multiple_correct' && Array.isArray(correct_answer?.values)) {
+        correct_answer = { values: (correct_answer.values as string[]).filter(v => v !== removed) };
+      }
+      return { ...f, options, correct_answer };
+    });
+  };
+
+  const setSingleCorrect = (value: string) => setForm(f => ({ ...f, correct_answer: { value } }));
+
+  const toggleMultiCorrect = (value: string) => setForm(f => {
+    const current = Array.isArray(f.correct_answer?.values) ? (f.correct_answer!.values as string[]) : [];
+    const values = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+    return { ...f, correct_answer: { values } };
+  });
+
+  const validateForm = (): string | null => {
+    if (form.type === 'mcq' || form.type === 'multiple_correct') {
+      const nonEmptyOptions = (form.options ?? []).filter(o => o.trim());
+      if (nonEmptyOptions.length < 2) return 'Add at least 2 answer options.';
+      if (form.type === 'mcq' && !form.correct_answer?.value) return 'Select which option is correct.';
+      if (form.type === 'multiple_correct' && !(Array.isArray(form.correct_answer?.values) && form.correct_answer.values.length > 0)) {
+        return 'Select at least one correct option.';
+      }
+    }
+    return null;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validateForm();
+    if (validationError) {
+      show({ tone: 'danger', title: validationError });
+      return;
+    }
     setSaving(true);
     try {
+      const isOptionBased = form.type === 'mcq' || form.type === 'multiple_correct';
       const payload: QuestionPayload = {
         ...form,
         tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+        options: isOptionBased ? (form.options ?? []).filter(o => o.trim()) : [],
       };
       let saved: AdminQuestion;
       if (editingId) {
@@ -252,6 +320,66 @@ export const QuestionBank: React.FC = () => {
             </Select>
           </div>
           <Textarea label="Question Text" required placeholder="Enter the question…" value={form.question_text} onChange={e => setForm(f => ({ ...f, question_text: e.target.value }))} />
+
+          {(form.type === 'mcq' || form.type === 'multiple_correct') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>
+                Answer Options <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>— {form.type === 'mcq' ? 'select the correct one' : 'select all correct ones'}</span>
+              </label>
+              {(form.options ?? []).map((opt, i) => {
+                const isCorrect = form.type === 'mcq'
+                  ? form.correct_answer?.value === opt && opt !== ''
+                  : Array.isArray(form.correct_answer?.values) && (form.correct_answer.values as string[]).includes(opt) && opt !== '';
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type={form.type === 'mcq' ? 'radio' : 'checkbox'}
+                      name="correct-option"
+                      checked={isCorrect}
+                      disabled={!opt.trim()}
+                      onChange={() => (form.type === 'mcq' ? setSingleCorrect(opt) : toggleMultiCorrect(opt))}
+                      style={{ accentColor: 'var(--accent-9)', flexShrink: 0 }}
+                    />
+                    <input
+                      className="form-input"
+                      placeholder={`Option ${i + 1}`}
+                      value={opt}
+                      onChange={e => updateOption(i, e.target.value)}
+                      style={{ flex: 1, padding: '8px 12px', fontSize: 'var(--text-sm)' }}
+                    />
+                    <Button
+                      type="button" size="sm" variant="ghost" icon={<X size={13} />} aria-label="Remove option"
+                      onClick={() => removeOption(i)} disabled={(form.options ?? []).length <= 2}
+                    />
+                  </div>
+                );
+              })}
+              <Button type="button" size="sm" variant="secondary" icon={<Plus size={13} />} onClick={addOption} style={{ alignSelf: 'flex-start' }}>
+                Add Option
+              </Button>
+            </div>
+          )}
+
+          {form.type === 'coding' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <Select
+                label="Programming Language"
+                value={form.programming_language ?? ''}
+                onChange={e => setForm(f => ({ ...f, programming_language: e.target.value || undefined }))}
+              >
+                <option value="">Any / unspecified</option>
+                {CODING_LANGUAGES.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+              </Select>
+              <Textarea
+                label="Starter Code (optional)"
+                placeholder="Pre-filled into the student's code editor…"
+                style={{ minHeight: 100, fontFamily: 'var(--font-mono)' }}
+                value={form.initial_code ?? ''}
+                onChange={e => setForm(f => ({ ...f, initial_code: e.target.value }))}
+              />
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
             <Input label="Subject" placeholder="e.g. Algorithms" value={form.subject ?? ''} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
             <Input label="Topic" placeholder="e.g. Binary Search" value={form.topic ?? ''} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} />
