@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app import heuristics, queue_engine
 from app.auth import get_current_student
 from app.database import get_db
-from app.exam_service import admit_as_many_as_possible, broadcast_admin_snapshot, compute_time_remaining, get_exam_questions, grade_answer
+from app.exam_service import admit_as_many_as_possible, broadcast_admin_snapshot, compute_time_remaining, exam_out, get_exam_questions, grade_answer
 from app.models import (
     ActivityEventType,
     ActivityLog,
@@ -57,12 +57,26 @@ def _session_out(db: Session, session: ExamSession, exam: Exam) -> SessionOut:
     return out
 
 
+@router.get("", response_model=list[ExamOut])
+def list_published_exams(db: Session = Depends(get_db), _: User = Depends(get_current_student)):
+    """Exams visible on the student dashboard — published only. start_date/end_date determine
+    whether the frontend shows "Live Now" vs "Scheduled"; start_exam() below re-checks the same
+    window server-side before admitting, so this listing is informational, not the real gate."""
+    exams = (
+        db.query(Exam)
+        .filter(Exam.status == ExamStatus.published)
+        .order_by(Exam.start_date.is_(None), Exam.start_date, Exam.title)
+        .all()
+    )
+    return [exam_out(e) for e in exams]
+
+
 @router.get("/{slug}", response_model=ExamOut)
 def get_exam(slug: str, db: Session = Depends(get_db), user: User = Depends(get_current_student)):
     exam = _get_exam_or_404(db, slug)
     db.add(ActivityLog(student_id=user.id, exam_id=exam.id, event_type=ActivityEventType.opened_link))
     db.commit()
-    return ExamOut.model_validate(exam)
+    return exam_out(exam)
 
 
 @router.post("/{slug}/start", response_model=SessionOut)

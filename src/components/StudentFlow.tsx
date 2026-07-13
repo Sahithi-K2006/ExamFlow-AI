@@ -14,7 +14,7 @@ import { Input } from './ui/Field';
 import { Modal } from './ui/Modal';
 import { Checkbox } from './ui/Checkbox';
 import { useToast } from './ui/Toast';
-import { getPracticeQuestions, logPracticeQuestionClick, type PracticeQuestion } from '../api/exams';
+import { getPracticeQuestions, logPracticeQuestionClick, listPublishedExams, type PracticeQuestion, type ApiExam } from '../api/exams';
 import { sendChatMessage, generateFlashcards, type Flashcard } from '../api/ai';
 import { ApiError } from '../api/client';
 
@@ -40,7 +40,7 @@ export const StudentFlow: React.FC = () => {
     studentUser,
     studentStatus, setStudentStatus,
     startExamSession, leaveQueue, queuePosition, totalWaiting, estimatedWaitSeconds,
-    currentExamSlug,
+    currentExamSlug, setCurrentExamSlug, examMeta,
     questions, currentQuestionIndex, setCurrentQuestionIndex,
     studentAnswers, setAnswer,
     examTimeRemaining,
@@ -64,6 +64,11 @@ export const StudentFlow: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Dashboard: published exams (GET /api/exams) — what admins publish is what shows here.
+  const [dashboardExams, setDashboardExams] = useState<ApiExam[]>([]);
+  const [dashboardExamsLoading, setDashboardExamsLoading] = useState(false);
+  const [dashboardExamsError, setDashboardExamsError] = useState<string | null>(null);
 
   // System check states
   const [checking, setChecking] = useState(false);
@@ -106,6 +111,18 @@ export const StudentFlow: React.FC = () => {
     const secs = seconds % 60;
     return `${mins} min ${secs.toString().padStart(2, '0')} sec`;
   };
+
+  // Dashboard exam list — whatever the admin has published, fetched fresh each time the
+  // student lands on the dashboard (e.g. after logging back in).
+  useEffect(() => {
+    if (studentStatus !== 'dashboard') return;
+    setDashboardExamsLoading(true);
+    setDashboardExamsError(null);
+    listPublishedExams()
+      .then(setDashboardExams)
+      .catch(() => setDashboardExamsError('Could not load exams right now. Please refresh the page.'))
+      .finally(() => setDashboardExamsLoading(false));
+  }, [studentStatus]);
 
   // Heuristic practice-question recommendations for the waiting lounge (see backend/app/heuristics.py) —
   // fetched once per wait, never includes this exam's own questions.
@@ -185,7 +202,8 @@ export const StudentFlow: React.FC = () => {
     }
   };
 
-  const handleStartExamFlow = () => {
+  const handleStartExamFlow = (slug: string) => {
+    setCurrentExamSlug(slug);
     setStudentStatus('system_check');
     setChecksPassed(false);
     setCheckStatus({ browser: 'idle', internet: 'idle', camera: 'idle' });
@@ -421,39 +439,60 @@ export const StudentFlow: React.FC = () => {
           </Card>
 
           <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>Active & Scheduled Examinations</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-5)' }}>
 
-            <Card padding="lg" accent="top" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                <Badge tone="success" dot>Live Now</Badge>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Points: 45</span>
-              </div>
-              <h4 style={{ fontSize: 'var(--text-lg)', marginBottom: 8, color: 'var(--text-primary)' }}>Data Structures & Algorithms Midterm</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', flex: 1, marginBottom: 20, lineHeight: 'var(--leading-normal)' }}>
-                Covers algorithmic complexities, linear/tree structures, and data filters. Tab-proctoring lock will be enforced.
-              </p>
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Duration: 15 mins</div>
-                <Button size="sm" icon={<Play size={12} />} iconPosition="right" onClick={handleStartExamFlow}>Start Assessment</Button>
-              </div>
+          {dashboardExamsLoading && (
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Loading exams…</p>
+          )}
+
+          {dashboardExamsError && (
+            <div style={{ background: 'var(--danger-subtle-bg)', border: '1px solid var(--danger-subtle-border)', borderRadius: 'var(--radius-md)', padding: '11px 14px', color: 'var(--danger-9)', fontSize: 'var(--text-sm)' }}>
+              {dashboardExamsError}
+            </div>
+          )}
+
+          {!dashboardExamsLoading && !dashboardExamsError && dashboardExams.length === 0 && (
+            <Card padding="lg" style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>
+              No exams are published yet. Check back once your instructor publishes one.
             </Card>
+          )}
 
-            <Card padding="lg" style={{ display: 'flex', flexDirection: 'column', height: '100%', opacity: 0.75 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                <Badge tone="accent">Scheduled</Badge>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Tomorrow</span>
-              </div>
-              <h4 style={{ fontSize: 'var(--text-lg)', marginBottom: 8, color: 'var(--text-primary)' }}>SYS-202: Systems Programming Final</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', flex: 1, marginBottom: 20, lineHeight: 'var(--leading-normal)' }}>
-                Covers POSIX thread APIs, concurrency structures, virtual locks, socket servers, and process allocation algorithms.
-              </p>
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Duration: 120 mins</div>
-                <Button size="sm" variant="secondary" disabled>Locked</Button>
-              </div>
-            </Card>
+          {dashboardExams.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-5)' }}>
+              {dashboardExams.map(exam => {
+                const now = Date.now();
+                const start = exam.start_date ? new Date(exam.start_date).getTime() : null;
+                const end = exam.end_date ? new Date(exam.end_date).getTime() : null;
+                const notStartedYet = start !== null && now < start;
+                const ended = end !== null && now > end;
+                const live = !notStartedYet && !ended;
 
-          </div>
+                return (
+                  <Card key={exam.id} padding="lg" accent={live ? 'top' : undefined} style={{ display: 'flex', flexDirection: 'column', height: '100%', opacity: live ? 1 : 0.75 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                      {live && <Badge tone="success" dot>Live Now</Badge>}
+                      {notStartedYet && <Badge tone="accent">Scheduled</Badge>}
+                      {ended && <Badge tone="neutral">Ended</Badge>}
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+                        {exam.question_count} question{exam.question_count === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <h4 style={{ fontSize: 'var(--text-lg)', marginBottom: 8, color: 'var(--text-primary)' }}>{exam.title}</h4>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', flex: 1, marginBottom: 20, lineHeight: 'var(--leading-normal)' }}>
+                      {exam.description || 'No description provided.'}
+                    </p>
+                    <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Duration: {exam.duration_minutes} mins</div>
+                      {live ? (
+                        <Button size="sm" icon={<Play size={12} />} iconPosition="right" onClick={() => handleStartExamFlow(exam.slug)}>Start Assessment</Button>
+                      ) : (
+                        <Button size="sm" variant="secondary" disabled>{notStartedYet ? 'Locked' : 'Closed'}</Button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -759,7 +798,7 @@ export const StudentFlow: React.FC = () => {
 
           <Card padding="md" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>DSA-101 Midterm Examination</h3>
+              <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{examMeta?.title ?? 'Examination'}</h3>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>Student: {studentUser.name} ({studentUser.studentId})</div>
             </div>
 

@@ -8,6 +8,7 @@ from app import queue_engine
 from app.auth import get_current_admin
 from app.database import get_db
 from app.exam_service import admit_as_many_as_possible, broadcast_admin_snapshot, broadcast_queue_positions, build_admin_queue
+from app.exam_service import exam_out as _exam_out
 from app.models import (
     ActivityEventType,
     ActivityLog,
@@ -40,13 +41,6 @@ def _get_exam_or_404(db: Session, exam_id: str) -> Exam:
     if not exam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     return exam
-
-
-def _exam_out(exam: Exam) -> ExamOut:
-    out = ExamOut.model_validate(exam)
-    out.question_count = len(exam.questions)
-    out.question_ids = [eq.question_id for eq in exam.questions]
-    return out
 
 
 def _slugify(title: str) -> str:

@@ -54,6 +54,8 @@ export interface SubmitResponse {
   redirect_to: string;
 }
 
+export const listPublishedExams = () => apiFetch<ApiExam[]>('/api/exams');
+
 export const getExam = (slug: string) => apiFetch<ApiExam>(`/api/exams/${slug}`);
 
 export const startExam = (slug: string) => apiFetch<ApiSession>(`/api/exams/${slug}/start`, { method: 'POST' });

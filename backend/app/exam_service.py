@@ -15,7 +15,15 @@ from app.models import (
     SessionStatus,
     User,
 )
+from app.schemas import ExamOut
 from app.websocket_manager import manager
+
+
+def exam_out(exam: Exam) -> ExamOut:
+    out = ExamOut.model_validate(exam)
+    out.question_count = len(exam.questions)
+    out.question_ids = [eq.question_id for eq in exam.questions]
+    return out
 
 
 def compute_time_remaining(session: ExamSession, exam: Exam) -> int:
