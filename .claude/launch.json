@@ -10,9 +10,10 @@
     },
     {
       "name": "backend",
-      "runtimeExecutable": "backend/venv/bin/uvicorn",
-      "runtimeArgs": ["app.main:app", "--reload", "--port", "8000", "--app-dir", "backend"],
-      "port": 8000
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "backend/venv/bin/uvicorn app.main:app --reload --port ${PORT:-8000} --app-dir backend"],
+      "port": 8000,
+      "autoPort": true
     }
   ]
 }
