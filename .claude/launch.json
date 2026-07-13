@@ -11,7 +11,7 @@
     {
       "name": "backend",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "backend/venv/bin/uvicorn app.main:app --reload --port ${PORT:-8000} --app-dir backend"],
+      "runtimeArgs": ["-c", "cd backend && venv/bin/uvicorn app.main:app --reload --port ${PORT:-8000}"],
       "port": 8000,
       "autoPort": true
     }

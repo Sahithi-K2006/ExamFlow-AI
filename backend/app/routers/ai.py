@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 
 from app.auth import get_current_student
 from app.models import User
-from app.schemas import AIChatRequest, AIChatResponse, MessageResponse
-from app.services.ai_service import MAX_HISTORY_MESSAGES, get_ai_reply
+from app.schemas import AIChatRequest, AIChatResponse, FlashcardsResponse, FlashcardTopicRequest, MessageResponse
+from app.services.ai_service import MAX_HISTORY_MESSAGES, generate_flashcards, get_ai_reply
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -30,3 +30,9 @@ def chat(payload: AIChatRequest, user: User = Depends(get_current_student)) -> A
 def reset_chat(user: User = Depends(get_current_student)) -> dict[str, str]:
     _history.pop(user.id, None)
     return {"message": "Conversation reset"}
+
+
+@router.post("/flashcards", response_model=FlashcardsResponse)
+def flashcards(payload: FlashcardTopicRequest, user: User = Depends(get_current_student)) -> FlashcardsResponse:
+    cards = generate_flashcards(payload.topic)
+    return FlashcardsResponse(topic=payload.topic, flashcards=cards)

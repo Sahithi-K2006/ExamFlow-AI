@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { useApp } from '../state';
 import {
   AlertTriangle, Play, HelpCircle, Terminal, Send, Clock,
-  ChevronLeft, ChevronRight, Award, Wifi, Camera, Monitor, LogOut, Copy, Check,
+  ChevronLeft, ChevronRight, Award, Wifi, Camera, Monitor, LogOut, Copy, Check, BookOpen,
 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -15,7 +15,7 @@ import { Modal } from './ui/Modal';
 import { Checkbox } from './ui/Checkbox';
 import { useToast } from './ui/Toast';
 import { getPracticeQuestions, logPracticeQuestionClick, type PracticeQuestion } from '../api/exams';
-import { sendChatMessage } from '../api/ai';
+import { sendChatMessage, generateFlashcards, type Flashcard } from '../api/ai';
 import { ApiError } from '../api/client';
 
 interface ChatMessage {
@@ -83,6 +83,13 @@ export const StudentFlow: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [clickedPracticeIds, setClickedPracticeIds] = useState<Set<string>>(new Set());
+
+  // AI Flashcards (waiting lounge)
+  const [flashcardTopic, setFlashcardTopic] = useState('');
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcardsLoading, setFlashcardsLoading] = useState(false);
+  const [flashcardsError, setFlashcardsError] = useState<string | null>(null);
+  const [revealedCardIndices, setRevealedCardIndices] = useState<Set<number>>(new Set());
 
   // Active Exam state
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
@@ -272,6 +279,37 @@ export const StudentFlow: React.FC = () => {
       setTimeout(() => setCopiedIndex(prev => (prev === index ? null : prev)), 1500);
     }).catch(() => {
       show({ tone: 'danger', title: 'Could not copy to clipboard' });
+    });
+  };
+
+  // AI Flashcards — POST /api/ai/flashcards
+  const handleGenerateFlashcards = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const topic = flashcardTopic.trim();
+    if (!topic || flashcardsLoading) return;
+
+    setFlashcardsLoading(true);
+    setFlashcardsError(null);
+    try {
+      const { flashcards: cards } = await generateFlashcards(topic);
+      setFlashcards(cards);
+      setRevealedCardIndices(new Set());
+    } catch (err) {
+      setFlashcards([]);
+      setFlashcardsError(err instanceof ApiError
+        ? err.message
+        : 'Could not reach the AI assistant. Please check your connection and try again.');
+    } finally {
+      setFlashcardsLoading(false);
+    }
+  };
+
+  const toggleFlashcardReveal = (index: number) => {
+    setRevealedCardIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
     });
   };
 
@@ -652,6 +690,65 @@ export const StudentFlow: React.FC = () => {
               </div>
             </Card>
           )}
+
+          <Card padding="lg" style={{ textAlign: 'left' }}>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)' }}>
+              <BookOpen size={16} color="var(--accent-9)" /> AI Flashcards
+            </h4>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginBottom: 14 }}>
+              Ask ExamFlow AI to generate quick revision flashcards for any exam topic while you wait.
+            </p>
+
+            <form onSubmit={handleGenerateFlashcards} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Binary Search Trees, SQL Joins…"
+                style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm)' }}
+                value={flashcardTopic}
+                onChange={e => setFlashcardTopic(e.target.value)}
+              />
+              <Button type="submit" loading={flashcardsLoading} disabled={!flashcardTopic.trim() || flashcardsLoading}>
+                Generate
+              </Button>
+            </form>
+
+            {flashcardsError && (
+              <div style={{ background: 'var(--danger-subtle-bg)', border: '1px solid var(--danger-subtle-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', color: 'var(--danger-9)', fontSize: 'var(--text-sm)', marginBottom: 16 }}>
+                {flashcardsError}
+              </div>
+            )}
+
+            {flashcards.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                {flashcards.map((card, i) => {
+                  const revealed = revealedCardIndices.has(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleFlashcardReveal(i)}
+                      style={{
+                        textAlign: 'left', padding: 14, borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--border-subtle)', background: revealed ? 'var(--accent-subtle-bg)' : 'var(--surface-2)',
+                        cursor: 'pointer', fontFamily: 'inherit', minHeight: 110, display: 'flex', flexDirection: 'column', gap: 8,
+                      }}
+                    >
+                      <span style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>
+                        {revealed ? 'Answer' : 'Question'}
+                      </span>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                        {revealed ? card.back : card.front}
+                      </span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 'auto' }}>
+                        {revealed ? 'Click to hide answer' : 'Click to reveal answer'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
 
         </div>
       )}

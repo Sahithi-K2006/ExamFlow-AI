@@ -281,3 +281,17 @@ class AIChatRequest(BaseModel):
 
 class AIChatResponse(BaseModel):
     reply: str
+
+
+class FlashcardTopicRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=200)
+
+
+class FlashcardOut(BaseModel):
+    front: str
+    back: str
+
+
+class FlashcardsResponse(BaseModel):
+    topic: str
+    flashcards: list[FlashcardOut]

@@ -29,10 +29,11 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_storage_bucket: str = "exam-attachments"
 
-    # Waiting Lounge AI Assistant — left empty until a real key is provided; app must keep
-    # booting when unset, see app/services/ai_service.py for the graceful-503 behavior.
-    openai_api_key: str = ""
-    ai_model: str = "gpt-4o-mini"
+    # Waiting Lounge AI Assistant (Google Gemini) — left empty until a real key is provided;
+    # app must keep booting when unset, see app/services/ai_service.py for the graceful-503
+    # behavior.
+    google_api_key: str = ""
+    ai_model: str = "gemini-2.5-flash"
     temperature: float = 0.3
     max_tokens: int = 700
 
