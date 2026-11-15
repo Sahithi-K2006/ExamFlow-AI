@@ -29,3 +29,4 @@ backend/*.egg-info
 *.njsproj
 *.sln
 *.sw?
+.claude/
