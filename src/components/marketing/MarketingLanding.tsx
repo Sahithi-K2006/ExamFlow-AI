@@ -10,7 +10,6 @@ import { StudentPortalSection } from './StudentPortalSection';
 import { AnalyticsSection } from './AnalyticsSection';
 import { SecuritySection } from './SecuritySection';
 import { TechStackSection } from './TechStackSection';
-import { TestimonialsSection } from './TestimonialsSection';
 import { FAQSection } from './FAQSection';
 import { MarketingFooter } from './MarketingFooter';
 
@@ -27,7 +26,6 @@ export const MarketingLanding: React.FC = () => (
     <AnalyticsSection />
     <SecuritySection />
     <TechStackSection />
-    <TestimonialsSection />
     <FAQSection />
     <MarketingFooter />
   </div>
